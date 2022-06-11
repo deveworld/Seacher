@@ -1,17 +1,45 @@
-#include <gtk/gtk.h>
+#include <SDL2/SDL.h>
+#include <iostream>
 
-int main (int argc, char **argv)
+int main(int argv, char** args)
 {
-    GtkWidget *window;
+    SDL_Init(SDL_INIT_EVERYTHING);
 
-    gtk_init(&argc, &argv);
+    SDL_Window *window = SDL_CreateWindow("Seacher", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, 0);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
-    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    gtk_window_set_title(GTK_WINDOW (window), "Test Seacher!");
-    g_signal_connect(G_OBJECT (window), "destroy", gtk_main_quit, NULL);
+    bool isRunning = true;
+    SDL_Event event;
 
-    gtk_widget_show_all(window);
-    gtk_main();
+    while (isRunning)
+    {
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_QUIT:
+                isRunning = false;
+                break;
+            
+            case SDL_KEYDOWN:
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                {
+                    isRunning = false;
+                }
+                break;
+            }
+        }
+        SDL_RenderClear(renderer);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+        SDL_RenderPresent(renderer);
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+
+    SDL_Quit();
 
     return 0;
 }
+
