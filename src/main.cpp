@@ -30,7 +30,7 @@ int main(int argv, char** args)
             }
         }
         SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
 
         SDL_RenderPresent(renderer);
     }
