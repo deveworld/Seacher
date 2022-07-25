@@ -20,8 +20,8 @@ public:
     void clear();
     void color(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
     void render(Entity& p_entity);
-    void renderText(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor);
-    void renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor);
+    void renderText(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
+    void renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
     void display();
     void cleanUp();
 };
@@ -64,46 +64,50 @@ void RenderWindow::render(Entity& p_entity)
     Vector2f position = p_entity.getPosition();
     Vector2f scale = p_entity.getScale();
     SDL_Rect dst;
-    dst.x = position.x + (src.w - src.w * scale.x)/2;
-	dst.y = position.y + (src.h - src.h * scale.y)/2;
+    dst.x = position.x;
+	dst.y = position.y;
 	dst.w = src.w * scale.x;
 	dst.h = src.h * scale.y;
 
-    SDL_RenderCopy(renderer, p_entity.getTexture(), &src, &dst);
+    SDL_RenderCopyEx(renderer, p_entity.getTexture(), &src, &dst, p_entity.getRotate(), NULL, p_entity.getFlip());
 }
 
-void RenderWindow::renderText(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor)
+void RenderWindow::renderText(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont)
 {
-		SDL_Surface* renderText = TTF_RenderText_Blended(p_font, p_text, p_textColor);
-		SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, renderText);
+	SDL_Surface* renderText = TTF_RenderUTF8_Blended(p_font, p_text, p_textColor);
+	SDL_Texture* message = SDL_CreateTextureFromSurface(renderer, renderText);
 
-		SDL_Rect src;
-		src.x = 0;
-		src.y = 0;
-		src.w = renderText->w;
-		src.h = renderText->h; 
+	SDL_Rect src;
+	src.x = 0;
+	src.y = 0;
+	src.w = renderText->w;
+	src.h = renderText->h; 
 
-		SDL_Rect dst;
-		dst.x = p_x;
-		dst.y = p_y;
-		dst.w = src.w;
-		dst.h = src.h;
+	SDL_Rect dst;
+	dst.x = p_x - renderText->w/2;
+	dst.y = p_y - renderText->h/2;
+	dst.w = src.w;
+	dst.h = src.h;
 
-		SDL_RenderCopy(renderer, message, &src, &dst);
-		SDL_FreeSurface(renderText);
-	 	SDL_DestroyTexture(message);
+    SDL_SetTextureAlphaMod(message, p_textColor.a);
+	SDL_RenderCopy(renderer, message, &src, &dst);
+	SDL_FreeSurface(renderText);
+	SDL_DestroyTexture(message);
+    if (closeFont)
+    {
         TTF_CloseFont(p_font);
+    }
 }
 
-void RenderWindow::renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor)
+void RenderWindow::renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont)
 {
-		SDL_Surface* renderText = TTF_RenderText_Blended(p_font, p_text, p_textColor);
+	SDL_Surface* renderText = TTF_RenderUTF8_Blended(p_font, p_text, p_textColor);
 
-		int x = SCREEN_X/2 - renderText->w/2 + p_x;
-		int y = SCREEN_Y/2 - renderText->h/2 + p_y;
+	int x = SCREEN_X/2 + p_x;
+	int y = SCREEN_Y/2 + p_y;
 
-        SDL_FreeSurface(renderText);
-        RenderWindow::renderText(x, y, p_text, p_font, p_textColor);
+    SDL_FreeSurface(renderText);
+    RenderWindow::renderText(x, y, p_text, p_font, p_textColor, closeFont);
 }
 
 void RenderWindow::display()
