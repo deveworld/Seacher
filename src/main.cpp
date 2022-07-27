@@ -23,11 +23,13 @@ const int SCREEN_Y = 900;
 
 const int STATE_START                   = 0001;
 const int STATE_WAIT_KEY_START          = 0002;
-const int STATE_PREPARE                 = 0003;
-const int STATE_PREPARE_NO_DESK         = 0004;
+const int STATE_PREPARE_NO_DESK         = 0003;
 const int STATE_PREPARE_NAME            = 0005;
 const int STATE_PREPARE_NAME_CHECK      = 0006;
 const int STATE_ARRANGE                 = 0007;
+
+const int ARRANGE_STATE_STOP            = 1001;
+const int ARRANGE_STATE_START           = 1002;
 
 #include "RenderWindow.hpp"
 #include "Desk.hpp"
@@ -39,6 +41,7 @@ void renderEssential();
 
 bool running = true;
 int state = STATE_START;
+int arrangeState = STATE_START;
 clock_t timer = clock();
 
 int row, column;
@@ -160,36 +163,8 @@ int main(int argv, char** args)
             if (leftMouseDown)
             {
                 leftMouseDown = false;
-                state = STATE_PREPARE;
+                state = STATE_PREPARE_NO_DESK;
                 timer = clock();
-            }
-            break;
-        }
-
-        case STATE_PREPARE:
-        {
-            renderEssential();
-
-            {
-                ImGui::SetNextWindowSize(ImVec2(400, 170), ImGuiCond_Once);
-                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-                ImGui::Begin("Students Settings-1");
-                ImGui::Text("How are your desks arranged in your classroom?");
-                ImGui::InputInt("row(width)", &row, 1, 1, ImGuiInputTextFlags_None);
-                ImGui::InputInt("column(height)", &column, 1, 1, ImGuiInputTextFlags_None);
-                if (row > 6)
-                {
-                    row = 6;
-                }
-                if (column > 6)
-                {
-                    column = 6;
-                }
-                if (ImGui::Button("Submit", ImVec2(70, 30)))
-                {
-                    state = STATE_PREPARE_NO_DESK;
-                }
-                ImGui::End();
             }
             break;
         }
@@ -198,19 +173,7 @@ int main(int argv, char** args)
         {
             renderEssential();
 
-            {
-                ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_Once);
-                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-                ImGui::Begin("Students Settings-2");
-                ImGui::Text("Click none using desk");
-                if (ImGui::Button("Done", ImVec2(50, 30)))
-                {
-                    state = STATE_PREPARE_NAME;
-                }
-                ImGui::End();
-            }
-
-            if (leftMouseDown)
+            if (leftMouseDown && !window.getIO()->WantCaptureMouse)
             {
                 leftMouseDown = false;
                 int noUseDeskX = 0;
@@ -275,17 +238,28 @@ int main(int argv, char** args)
                 default:
                     break;
                 }
-                if (noUseDeskX == 0 || noUseDeskY == 0)
+                if (noUseDeskX != 0 && noUseDeskY != 0)
                 {
-                    break;
+                    if (desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].isDisabled())
+                    {
+                        desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].enable();
+                    }
+                    else {
+                        desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].disable();
+                    }
                 }
-                if (desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].isDisabled())
+            }
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-1");
+                ImGui::Text("Click none using desk");
+                if (ImGui::Button("Done", ImVec2(50, 30)))
                 {
-                    desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].enable();
+                    state = STATE_PREPARE_NAME;
                 }
-                else {
-                    desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].disable();
-                }
+                ImGui::End();
             }
             
             break;
@@ -298,7 +272,7 @@ int main(int argv, char** args)
             {
                 ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
                 ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-                ImGui::Begin("Students Settings-3");
+                ImGui::Begin("Students Settings-2");
                 ImGui::Text("Enter student names(Separating by lines)");
                 ImGui::InputTextMultiline(
                     "##Names", 
@@ -334,13 +308,12 @@ int main(int argv, char** args)
                         buffer.erase(0, pos + delimiter.length());
                     } while (pos != std::string::npos);
                     size_t i = 1; 
-                    std::string buff = "";
+                    namesCheck = "";
                     for (std::string name : names)
                     {
-                        buff += std::to_string(i) + ": " + name + "\n";
+                        namesCheck += std::to_string(i) + ": " + name + "\n";
                         i++;
                     }
-                    namesCheck = buff;
                     state = STATE_PREPARE_NAME_CHECK;
                 }
                 ImGui::End();
@@ -355,7 +328,7 @@ int main(int argv, char** args)
             {
                 ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
                 ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
-                ImGui::Begin("Students Settings-4");
+                ImGui::Begin("Students Settings-3");
                 ImGui::Text("Student names checking");
                 ImGui::InputTextMultiline(
                     "##NamesCheck", 
@@ -373,6 +346,7 @@ int main(int argv, char** args)
                 if (ImGui::Button("Cancel", ImVec2(70, 30)))
                 {
                     namesCheck = "";
+                    names.clear();
                     state = STATE_PREPARE_NAME;
                 }
                 ImGui::End();

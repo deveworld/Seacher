@@ -15,6 +15,7 @@ class RenderWindow
 private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+    ImGuiIO* io = nullptr;
 public:
     RenderWindow(const char* p_title, int p_width, int p_height);
     SDL_Texture* loadTexture(const char* p_filePath);
@@ -25,6 +26,7 @@ public:
     void renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
     void display();
     void cleanUp();
+    ImGuiIO* getIO();
 };
 
 RenderWindow::RenderWindow(const char* p_title, int p_width, int p_height)
@@ -38,10 +40,10 @@ RenderWindow::RenderWindow(const char* p_title, int p_width, int p_height)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io = &ImGui::GetIO(); (void)io;
 
-    io.Fonts->AddFontFromFileTTF("resources/HANBatangB.ttf", 20.0f, NULL, io.Fonts->GetGlyphRangesKorean());
-    io.FontDefault = io.Fonts->Fonts[0];
+    io->Fonts->AddFontFromFileTTF("resources/HANBatangB.ttf", 20.0f, NULL, io->Fonts->GetGlyphRangesKorean());
+    io->FontDefault = io->Fonts->Fonts[0];
 
     ImGui::StyleColorsDark();
 
@@ -131,4 +133,9 @@ void RenderWindow::display()
 void RenderWindow::cleanUp()
 {
     SDL_DestroyWindow(window);
+}
+
+ImGuiIO* RenderWindow::getIO()
+{
+    return io;
 }
