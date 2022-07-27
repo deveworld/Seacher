@@ -26,8 +26,10 @@ public:
     void move(float x, float y);
     void setPosition(float x, float y);
     void setPosition(Vector2f p_position);
+    void setTexture(SDL_Texture* p_texture);
     void setScale(float x, float y);
     void rotate(double p_angle);
+    void setRotate(double p_angle);
     void setFlip(SDL_RendererFlip p_flip);
     void flipHorizontal();
     void flipVertical();
@@ -122,6 +124,11 @@ void Entity::setPosition(Vector2f p_position)
     position = p_position;
 }
 
+void Entity::setTexture(SDL_Texture* p_texture)
+{
+    texture = p_texture;
+}
+
 void Entity::setScale(float w, float h)
 {
 	scale.x = w;
@@ -131,6 +138,22 @@ void Entity::setScale(float w, float h)
 void Entity::rotate(double p_angle)
 {
 	angle += p_angle;
+    while (abs(angle) > 360)
+    {
+        if (angle > 0)
+        {
+            angle -= 360;
+        }
+        else if (angle < 0)
+        {
+            angle += 360;
+        }
+    }
+}
+
+void Entity::setRotate(double p_angle)
+{
+	angle = p_angle;
     while (abs(angle) > 360)
     {
         if (angle > 0)

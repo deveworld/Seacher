@@ -1,9 +1,15 @@
+#include "imgui.h"
+#include "imgui_stdlib.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_sdlrenderer.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include <vector>
+#include <algorithm>
+
 // #include <chrono>
 // #include <cstdint>
 
@@ -15,9 +21,13 @@
 const int SCREEN_X = 1200;
 const int SCREEN_Y = 900;
 
-const int STATE_START          = 0001;
-const int STATE_WAIT_KEY_START = 0002;
-const int STATE_PREAPARE       = 0003;
+const int STATE_START                   = 0001;
+const int STATE_WAIT_KEY_START          = 0002;
+const int STATE_PREPARE                 = 0003;
+const int STATE_PREPARE_NO_DESK         = 0004;
+const int STATE_PREPARE_NAME            = 0005;
+const int STATE_PREPARE_NAME_CHECK      = 0006;
+const int STATE_ARRANGE                 = 0007;
 
 #include "RenderWindow.hpp"
 #include "Desk.hpp"
@@ -25,10 +35,16 @@ const int STATE_PREAPARE       = 0003;
 bool init();
 void eventHandle();
 TTF_Font* getFont(int size, bool bold = false);
+void renderEssential();
 
 bool running = true;
 int state = STATE_START;
 clock_t timer = clock();
+
+int row, column;
+std::string rawNames = "";
+std::string namesCheck = "";
+std::vector<std::string> names;
 
 bool leftMouseDown = false;
 bool rightMouseDown = false;
@@ -42,10 +58,13 @@ RenderWindow window("Seacher", SCREEN_X, SCREEN_Y);
 
 SDL_Texture* blackboardTexture      = window.loadTexture("resources/blackboard.png");
 SDL_Texture* deskTexture            = window.loadTexture("resources/desk.png");
+SDL_Texture* noUseDeskTexture       = window.loadTexture("resources/noUseDesk.png");
 SDL_Texture* teacherDeskTexture     = window.loadTexture("resources/teacherDesk.png");
 
 std::vector<Entity> allEntity;
 std::vector<Desk> desks;
+
+ImVec4 backgroundColor = ImVec4(0.79215686274, 0.6431372549, 0.44705882352, 1);
 
 TTF_Font* font28        = getFont(28);
 TTF_Font* fontB28       = getFont(28, true);
@@ -62,15 +81,18 @@ int main(int argv, char** args)
         return 0;
     }
 
-    Entity blackboard     = Entity(Vector2f(0, 0), blackboardTexture, Vector2f(0.45, 0.2), 180.0);
+    Entity blackboard     = Entity(Vector2f(0, 0), blackboardTexture, Vector2f(0.45, 0.2));
     Entity desk           = Entity(Vector2f(0, 0), deskTexture, Vector2f(0.13, 0.13));
     Entity teacherDesk    = Entity(Vector2f(0, 0), teacherDeskTexture, Vector2f(0.13, 0.13));
 
     blackboard.center();
     blackboard.move(0, 438);
+    blackboard.flipHorizontal();
 
     teacherDesk.center();
     teacherDesk.move(0, 350);
+
+    desk.flipHorizontal();
 
     for (size_t i = 1; i <= 6; i++)
     {
@@ -80,7 +102,6 @@ int main(int argv, char** args)
             desks.push_back(newDesk);
         }
     }
-    Vector2f deskSize = desks[0].getEntity()->getSize();
 
     allEntity.push_back(teacherDesk);
     allEntity.push_back(blackboard);
@@ -95,8 +116,12 @@ int main(int argv, char** args)
         //     std::cout << "up key pressed! clock: " << getTime() << std::endl;
         // }
 
+        ImGui_ImplSDLRenderer_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+
         window.clear();
-        window.color(150, 150, 150, 255);
+        window.color(backgroundColor);
         switch (state)
         {
         case STATE_START:
@@ -129,47 +154,305 @@ int main(int argv, char** args)
         }
 
         case STATE_WAIT_KEY_START:
+        {
             window.renderTextCenter(0, -150, "Seacher", getFont(100, true), {0, 0, 0, 255}, true);
-            window.renderTextCenter(0, 150, "Press Any Key to Start", getFont(50, true), {0, 0, 0, 255}, true);
-            if (event.key.state == SDL_KEYDOWN || leftMouseDown)
+            window.renderTextCenter(0, 150, "Click Anywhere to Start", getFont(50, true), {0, 0, 0, 255}, true);
+            if (leftMouseDown)
             {
                 leftMouseDown = false;
-                state = STATE_PREAPARE;
+                state = STATE_PREPARE;
                 timer = clock();
             }
             break;
+        }
 
-        case STATE_PREAPARE:
+        case STATE_PREPARE:
         {
-            for (Desk loopDesk : desks)
+            renderEssential();
+
             {
-                window.render(*(loopDesk.getEntity()));
-            }
-            for (Entity entity : allEntity)
-            {
-                window.render(entity);
-            }
-            for (Desk loopDesk : desks)
-            {
-                if (loopDesk.getName() != "")
+                ImGui::SetNextWindowSize(ImVec2(400, 170), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-1");
+                ImGui::Text("How are your desks arranged in your classroom?");
+                ImGui::InputInt("row(width)", &row, 1, 1, ImGuiInputTextFlags_None);
+                ImGui::InputInt("column(height)", &column, 1, 1, ImGuiInputTextFlags_None);
+                if (row > 6)
                 {
-                    Vector2f pos = loopDesk.getCoord();
-                    window.renderText(pos.x + deskSize.x/2, pos.y + deskSize.y/2 + 14, loopDesk.getName().c_str(), fontB28, {0, 0, 0, 255});
+                    row = 6;
+                }
+                if (column > 6)
+                {
+                    column = 6;
+                }
+                if (ImGui::Button("Submit", ImVec2(70, 30)))
+                {
+                    state = STATE_PREPARE_NO_DESK;
+                }
+                ImGui::End();
+            }
+            break;
+        }
+
+        case STATE_PREPARE_NO_DESK:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-2");
+                ImGui::Text("Click none using desk");
+                if (ImGui::Button("Done", ImVec2(50, 30)))
+                {
+                    state = STATE_PREPARE_NAME;
+                }
+                ImGui::End();
+            }
+
+            if (leftMouseDown)
+            {
+                leftMouseDown = false;
+                int noUseDeskX = 0;
+                int noUseDeskY = 0;
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                switch (mouseX)
+                {
+                case 26 ... 168: // 1
+                    noUseDeskX = 1;
+                    break;
+
+                case 228 ... 369: // 2
+                    noUseDeskX = 2;
+                    break;
+                
+                case 429 ... 571: // 3
+                    noUseDeskX = 3;
+                    break;
+
+                case 630 ... 772: // 4
+                    noUseDeskX = 4;
+                    break;
+                
+                case 832 ... 974: // 5
+                    noUseDeskX = 5;
+                    break;
+
+                case 1034 ... 1175: // 6
+                    noUseDeskX = 6;
+                    break;
+                
+                default:
+                    break;
+                }
+                switch (mouseY)
+                {
+                case 10 ... 133: // 1
+                    noUseDeskY = 1;
+                    break;
+
+                case 134 ... 256: // 2
+                    noUseDeskY = 2;
+                    break;
+
+                case 257 ... 380: // 3
+                    noUseDeskY = 3;
+                    break;
+
+                case 381 ... 504: // 4
+                    noUseDeskY = 4;
+                    break;
+
+                case 505 ... 627: // 5
+                    noUseDeskY = 5;
+                    break;
+
+                case 628 ... 751: // 6
+                    noUseDeskY = 6;
+                    break;
+                
+                default:
+                    break;
+                }
+                if (noUseDeskX == 0 || noUseDeskY == 0)
+                {
+                    break;
+                }
+                if (desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].isDisabled())
+                {
+                    desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].enable();
+                }
+                else {
+                    desks[((noUseDeskX)-1)*6 + noUseDeskY - 1].disable();
                 }
             }
+            
+            break;
+        }
+
+        case STATE_PREPARE_NAME:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-3");
+                ImGui::Text("Enter student names(Separating by lines)");
+                ImGui::InputTextMultiline(
+                    "##Names", 
+                    &rawNames,
+                    ImVec2(300, 300), 
+                    ImGuiInputTextFlags_CharsNoBlank
+                );
+                if (ImGui::Button("Done", ImVec2(50, 30)))
+                {
+                    std::string buffer = rawNames;
+                    size_t pos = 0;
+                    std::string token;
+                    std::string delimiter = "\n";
+                    do
+                    {
+                        pos = buffer.find(delimiter);
+
+                        if (pos == std::string::npos)
+                        {
+                            token = buffer;
+                        }
+                        else
+                        {
+                            token = buffer.substr(0, pos);
+                        }
+
+                        if (token[token.size() -1] == '\r')
+                        {
+                            token = token.substr(0, token.size() -1);
+                        }
+
+                        names.push_back(token);
+                        buffer.erase(0, pos + delimiter.length());
+                    } while (pos != std::string::npos);
+                    size_t i = 1; 
+                    std::string buff = "";
+                    for (std::string name : names)
+                    {
+                        buff += std::to_string(i) + ": " + name + "\n";
+                        i++;
+                    }
+                    namesCheck = buff;
+                    state = STATE_PREPARE_NAME_CHECK;
+                }
+                ImGui::End();
+            }
+            break;
+        }
+
+        case STATE_PREPARE_NAME_CHECK:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-4");
+                ImGui::Text("Student names checking");
+                ImGui::InputTextMultiline(
+                    "##NamesCheck", 
+                    &namesCheck,
+                    ImVec2(300, 300), 
+                    ImGuiInputTextFlags_ReadOnly
+                );
+                if (ImGui::Button("Ok", ImVec2(50, 30)))
+                {
+                    rawNames = "";
+                    namesCheck = "";
+                    state = STATE_ARRANGE;
+                }
+                ImGui::SameLine(0.0F, 15.0F);
+                if (ImGui::Button("Cancel", ImVec2(70, 30)))
+                {
+                    namesCheck = "";
+                    state = STATE_PREPARE_NAME;
+                }
+                ImGui::End();
+            }
+
+            break;
+        }
+
+        case STATE_ARRANGE:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(310, 100), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Arrannge");
+                ImGui::Text("Students arrannge");
+                if (ImGui::Button("Start", ImVec2(70, 30)))
+                {
+                    state = STATE_ARRANGE;
+                }
+                ImGui::SameLine(0.0F, 15.0F);
+                if (ImGui::Button("Stop", ImVec2(70, 30)))
+                {
+                    state = STATE_ARRANGE;
+                }
+                ImGui::SameLine(0.0F, 15.0F);
+                if (ImGui::Button("Stop & Save", ImVec2(120, 30)))
+                {
+                    state = STATE_ARRANGE;
+                }
+                ImGui::End();
+            }
+
             break;
         }
         
         default:
             break;
         }
+        ImGui::Render();
+        ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
         window.display();
     }
+
+    ImGui_ImplSDLRenderer_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
 
     window.cleanUp();
     SDL_Quit();
 
     return 0;
+}
+
+void renderEssential()
+{
+    Vector2f deskSize = desks[0].getEntity()->getSize();
+    for (Desk loopDesk : desks)
+    {
+        window.render(*(loopDesk.getEntity()));
+        if (loopDesk.getName() != "")
+        {
+            Vector2f pos = loopDesk.getCoord();
+            window.renderText(pos.x + deskSize.x/2, pos.y + deskSize.y/2 + 14, loopDesk.getName().c_str(), fontB28, {0, 0, 0, 255});
+        }
+    }
+    for (Entity entity : allEntity)
+    {
+        window.render(entity);
+    }
+
+    {
+        ImGui::Begin("Window Info");
+        ImGui::SetWindowSize(ImVec2(450, 100), ImGuiCond_Once);
+        ImGui::SetWindowPos(ImVec2(740, 10), ImGuiCond_Once);
+        ImGui::ColorEdit4("Background color", (float*)&backgroundColor);
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+        ImGui::End();
+    }
 }
 
 bool init()
@@ -205,6 +488,7 @@ void eventHandle()
     
     while (SDL_PollEvent(&event))
     {
+        ImGui_ImplSDL2_ProcessEvent(&event);
         switch (event.type)
         {
         case SDL_QUIT:

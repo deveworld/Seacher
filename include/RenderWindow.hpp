@@ -1,4 +1,5 @@
 #pragma once
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
@@ -18,7 +19,7 @@ public:
     RenderWindow(const char* p_title, int p_width, int p_height);
     SDL_Texture* loadTexture(const char* p_filePath);
     void clear();
-    void color(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+    void color(ImVec4 color);
     void render(Entity& p_entity);
     void renderText(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
     void renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
@@ -34,6 +35,18 @@ RenderWindow::RenderWindow(const char* p_title, int p_width, int p_height)
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (renderer == nullptr)
         std::cout << "SDL_CreateRenderer ERROR: " << SDL_GetError() << std::endl;
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    io.Fonts->AddFontFromFileTTF("resources/HANBatangB.ttf", 20.0f, NULL, io.Fonts->GetGlyphRangesKorean());
+    io.FontDefault = io.Fonts->Fonts[0];
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer_Init(renderer);
 }
 
 SDL_Texture* RenderWindow::loadTexture(const char* p_filePath)
@@ -52,9 +65,9 @@ void RenderWindow::clear()
     SDL_RenderClear(renderer);
 }
 
-void RenderWindow::color(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void RenderWindow::color(ImVec4 color)
 {
-    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+    SDL_SetRenderDrawColor(renderer, color.x*255, color.y*255, color.z*255, color.w*255);
 }
 
 void RenderWindow::render(Entity& p_entity)
