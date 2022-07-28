@@ -11,6 +11,7 @@ private:
     double angle;
     SDL_RendererFlip flip;
 public:
+    Entity();
     Entity(Vector2f p_position, SDL_Texture* p_texture);
     Entity(Vector2f p_position, SDL_Texture* p_texture, Vector2f p_scale);
     Entity(Vector2f p_position, SDL_Texture* p_texture, double p_angle);
@@ -34,6 +35,9 @@ public:
     void flipHorizontal();
     void flipVertical();
 };
+
+Entity::Entity()
+{}
 
 Entity::Entity(Vector2f p_position, SDL_Texture* p_texture)
 : position(p_position)

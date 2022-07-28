@@ -13,8 +13,12 @@ private:
     std::string name;
     bool disabled;
 public:
-    Desk(Entity p_entity, Vector2f p_coord);
+    Desk();
+    Desk(Vector2f p_coord);
+    Desk(Vector2f p_coord, std::string p_name, bool p_disabled);
+    Desk(Vector2f p_coord, Entity p_entity);
     Entity* getEntity();
+    Vector2f getJustCoord();
     Vector2f getCoord();
     std::string getName();
     void setName(std::string p_name);
@@ -23,18 +27,38 @@ public:
     void enable();
 };
 
-Desk::Desk(Entity p_entity, Vector2f p_coord)
-: entity(p_entity)
-, coord(p_coord)
+Desk::Desk()
+{}
+
+Desk::Desk(Vector2f p_coord)
+: coord(p_coord)
 , disabled(false)
 {
-    entity.setPosition(getCoord());
     name = "";
+}
+
+Desk::Desk(Vector2f p_coord, std::string p_name, bool p_disabled)
+: Desk(p_coord)
+{
+    name = p_name;
+    disabled = p_disabled;
+}
+
+Desk::Desk(Vector2f p_coord, Entity p_entity)
+: Desk(p_coord)
+{
+    entity = p_entity;
+    entity.setPosition(getCoord());
 }
 
 Entity* Desk::getEntity()
 {
     return &entity;
+}
+
+Vector2f Desk::getJustCoord()
+{
+    return coord;
 }
 
 Vector2f Desk::getCoord()

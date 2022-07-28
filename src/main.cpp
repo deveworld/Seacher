@@ -28,20 +28,19 @@ const int STATE_PREPARE_NAME            = 0005;
 const int STATE_PREPARE_NAME_CHECK      = 0006;
 const int STATE_ARRANGE                 = 0007;
 
-const int ARRANGE_STATE_STOP            = 1001;
-const int ARRANGE_STATE_START           = 1002;
-
 #include "RenderWindow.hpp"
 #include "Desk.hpp"
+#include "Arranger.hpp"
 
 bool init();
 void eventHandle();
 TTF_Font* getFont(int size, bool bold = false);
 void renderEssential();
+void setName(int deskId, std::string name);
 
 bool running = true;
 int state = STATE_START;
-int arrangeState = STATE_START;
+bool nameWrong = false;
 clock_t timer = clock();
 
 int row, column;
@@ -58,6 +57,7 @@ SDL_Event event;
 bool inited = init();
 
 RenderWindow window("Seacher", SCREEN_X, SCREEN_Y);
+Arranger* arranger = nullptr;
 
 SDL_Texture* blackboardTexture      = window.loadTexture("resources/blackboard.png");
 SDL_Texture* deskTexture            = window.loadTexture("resources/desk.png");
@@ -101,7 +101,7 @@ int main(int argv, char** args)
     {
         for (size_t j = 1; j <= 6; j++)
         {
-            Desk newDesk = Desk(desk, Vector2f(i, j));
+            Desk newDesk = Desk(Vector2f(i, j), desk);
             desks.push_back(newDesk);
         }
     }
@@ -274,6 +274,12 @@ int main(int argv, char** args)
                 ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
                 ImGui::Begin("Students Settings-2");
                 ImGui::Text("Enter student names(Separating by lines)");
+                if (nameWrong)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,50,50,255));
+                    ImGui::Text("The number of seats and names do not match");
+                    ImGui::PopStyleColor();
+                }
                 ImGui::InputTextMultiline(
                     "##Names", 
                     &rawNames,
@@ -307,6 +313,22 @@ int main(int argv, char** args)
                         names.push_back(token);
                         buffer.erase(0, pos + delimiter.length());
                     } while (pos != std::string::npos);
+                    size_t deskCount = 0;
+                    for (Desk desk : desks)
+                    {
+                        if (!desk.isDisabled())
+                        {
+                            deskCount++;
+                        }
+                    }
+                    if (deskCount != names.size())
+                    {
+                        names.clear();
+                        nameWrong = true;
+                        ImGui::End();
+                        break;
+                    }
+                    
                     size_t i = 1; 
                     namesCheck = "";
                     for (std::string name : names)
@@ -340,6 +362,17 @@ int main(int argv, char** args)
                 {
                     rawNames = "";
                     namesCheck = "";
+                    int i = 0;
+                    for (Desk& desk : desks)
+                    {
+                        if (!desk.isDisabled())
+                        {
+                            desk.setName(names[i]);
+                            i++;
+                        }
+                    }
+                    Arranger buf = Arranger(&desks, &names);
+                    arranger = &buf;
                     state = STATE_ARRANGE;
                 }
                 ImGui::SameLine(0.0F, 15.0F);
@@ -366,17 +399,17 @@ int main(int argv, char** args)
                 ImGui::Text("Students arrannge");
                 if (ImGui::Button("Start", ImVec2(70, 30)))
                 {
-                    state = STATE_ARRANGE;
+                    arranger->start();
                 }
                 ImGui::SameLine(0.0F, 15.0F);
                 if (ImGui::Button("Stop", ImVec2(70, 30)))
                 {
-                    state = STATE_ARRANGE;
+                    arranger->stop();
                 }
                 ImGui::SameLine(0.0F, 15.0F);
                 if (ImGui::Button("Stop & Save", ImVec2(120, 30)))
                 {
-                    state = STATE_ARRANGE;
+                    arranger->stop();
                 }
                 ImGui::End();
             }
@@ -400,6 +433,11 @@ int main(int argv, char** args)
     SDL_Quit();
 
     return 0;
+}
+
+void setName(int deskId, std::string name)
+{
+    desks[deskId].setName(name);
 }
 
 void renderEssential()
