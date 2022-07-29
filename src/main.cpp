@@ -13,12 +13,13 @@
 const int SCREEN_X = 1200;
 const int SCREEN_Y = 900;
 
-const int STATE_START                   = 0001;
-const int STATE_WAIT_KEY_START          = 0002;
-const int STATE_PREPARE_NO_DESK         = 0003;
-const int STATE_PREPARE_NAME            = 0005;
-const int STATE_PREPARE_NAME_CHECK      = 0006;
-const int STATE_ARRANGE                 = 0007;
+const int STATE_START                   = 001;
+const int STATE_WAIT_KEY_START          = 002;
+const int STATE_PREPARE_NO_DESK         = 003;
+const int STATE_PREPARE_NAME            = 005;
+const int STATE_PREPARE_NAME_CHECK      = 006;
+const int STATE_PREPARE_SEPARATE_NAME   = 007;
+const int STATE_ARRANGE                 = 010;
 
 #include "RenderWindow.hpp"
 #include "Desk.hpp"
@@ -37,7 +38,9 @@ clock_t timer = clock();
 int row, column;
 std::string rawNames = "";
 std::string namesCheck = "";
+std::string rawSeparateNames = "";
 std::vector<std::string> names;
+std::vector<std::string> separateNames;
 
 bool leftMouseDown = false;
 bool rightMouseDown = false;
@@ -362,9 +365,7 @@ int main(int argv, char** args)
                             i++;
                         }
                     }
-                    Arranger buf = Arranger(&desks, &names);
-                    arranger = &buf;
-                    state = STATE_ARRANGE;
+                    state = STATE_PREPARE_SEPARATE_NAME;
                 }
                 ImGui::SameLine(0.0F, 15.0F);
                 if (ImGui::Button("Cancel", ImVec2(70, 30)))
@@ -376,6 +377,58 @@ int main(int argv, char** args)
                 ImGui::End();
             }
 
+            break;
+        }
+
+        case STATE_PREPARE_SEPARATE_NAME:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-4");
+                ImGui::Text("Enter student separate names");
+                ImGui::InputTextMultiline(
+                    "##SeparateNames", 
+                    &rawSeparateNames,
+                    ImVec2(300, 300), 
+                    ImGuiInputTextFlags_CharsNoBlank
+                );
+                if (ImGui::Button("Done", ImVec2(50, 30)))
+                {
+                    std::string buffer = rawSeparateNames;
+                    size_t pos = 0;
+                    std::string token;
+                    std::string delimiter = "\n";
+                    do
+                    {
+                        pos = buffer.find(delimiter);
+
+                        if (pos == std::string::npos)
+                        {
+                            token = buffer;
+                        }
+                        else
+                        {
+                            token = buffer.substr(0, pos);
+                        }
+
+                        if (token[token.size() -1] == '\r')
+                        {
+                            token = token.substr(0, token.size() -1);
+                        }
+
+                        separateNames.push_back(token);
+                        buffer.erase(0, pos + delimiter.length());
+                    } while (pos != std::string::npos);                    
+                    Arranger buf = Arranger(&desks, &names, &separateNames);
+                    arranger = &buf;
+
+                    state = STATE_ARRANGE;
+                }
+                ImGui::End();
+            }
             break;
         }
 

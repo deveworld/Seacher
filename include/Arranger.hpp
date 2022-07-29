@@ -27,11 +27,12 @@ private:
     std::vector<Desk>* desks;
     std::vector<std::vector<DeskForCal>> geneDesks;
     std::vector<std::string>* names;
+    std::vector<std::string>* separateNames;
     std::thread arrangerThread;
     std::default_random_engine rng = std::default_random_engine {};
     int bestDesk = 0;
 public:
-    Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names);
+    Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names, std::vector<std::string>* p_separateNames);
     void geneDesksInit();
     void start();
     void stop();
@@ -40,9 +41,10 @@ public:
     int evaluate(std::vector<DeskForCal> p_desks);
 };
 
-Arranger::Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names)
+Arranger::Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names, std::vector<std::string>* p_separateNames)
 : desks(p_desks)
 , names(p_names)
+, separateNames(p_separateNames)
 {}
 
 void Arranger::geneDesksInit()
@@ -167,14 +169,30 @@ void Arranger::arrange()
     epoch++;
 }
 
-int Arranger::evaluate(std::vector<DeskForCal> p_desks) // test evaluate code
+int Arranger::evaluate(std::vector<DeskForCal> p_desks)
 {
     int score = 0;
     for (DeskForCal desk : p_desks)
     {
-        score += std::stoi(desk.getName())
-        * desk.getCoord().x
-        * desk.getCoord().y;
+        if (std::find(separateNames->begin(), separateNames->end(), desk.getName()) != separateNames->end())
+        {
+            for (std::string separateName1 : *separateNames)
+            {
+                if (separateName1 != desk.getName())
+                {
+                    for (DeskForCal otherDesk : p_desks)
+                    {
+                        if (otherDesk.getName() == separateName1)
+                        {
+                            score += abs(desk.getCoord().x - otherDesk.getCoord().x)
+                                   + abs(desk.getCoord().y - otherDesk.getCoord().y);
+                        }
+                    }
+                }
+            }
+            
+        }
+        
     }
     
     return score;
