@@ -3,26 +3,33 @@
 #include <algorithm>
 #include <random>
 #include "Math.hpp"
+#include <unistd.h>
 
 const int ARRANGE_STATE_INIT            = 1000;
 const int ARRANGE_STATE_STOP            = 1001;
 const int ARRANGE_STATE_START           = 1002;
 const int ARRANGE_STATE_STOPPED         = 1003;
 
-extern void setName(int deskId, std::string name);
+#include <chrono>
+#include <cstdint>
+
+uint64_t getTime() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
 
 class Arranger
 {
 private:
     int state = ARRANGE_STATE_INIT;
     int epoch = 0;
-    int gens = 10;
+    int gens = 10; // > 1
     std::vector<Desk>* desks;
     std::vector<std::vector<DeskForCal>> geneDesks;
     std::vector<std::string>* names;
     std::thread arrangerThread;
     std::default_random_engine rng = std::default_random_engine {};
-    std::vector<DeskForCal>* bestDesk = nullptr;
+    int bestDesk = 0;
 public:
     Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names);
     void geneDesksInit();
@@ -73,8 +80,9 @@ void Arranger::arrangeLoop()
         {
             arrange();
         }
-        else {
+        else if (state == ARRANGE_STATE_STOP) {
             state = ARRANGE_STATE_STOPPED;
+            std::cout << "stopped" << std::endl;
         }
     }
 }
@@ -85,7 +93,7 @@ void Arranger::arrange()
     {
         std::vector<std::string> copyNames = *names;
 
-        for (std::vector<DeskForCal> geneDesk : geneDesks)
+        for (std::vector<DeskForCal>& geneDesk : geneDesks)
         {
             std::shuffle(copyNames.begin(), copyNames.end(), rng);
             int i = 0;
@@ -101,22 +109,25 @@ void Arranger::arrange()
             }
         }
     }
-    else {
+    else 
+    {
         int bestScore = -100;
-        for (std::vector<DeskForCal> geneDesk : geneDesks)
+        size_t i = 0;
+        for (std::vector<DeskForCal>& geneDesk : geneDesks)
         {
             int score = evaluate(geneDesk);
             if (score > bestScore)
             {
                 bestScore = score;
-                bestDesk = &geneDesk;
+                bestDesk = i;
             }
+            i++;
         }
         // for (DeskForCal desk : *bestDesk)
-        size_t i = 0;
+        i = 0;
         for (Desk& desk : *desks)
         {
-            std::string name = bestDesk->at(i).getName();
+            std::string name = geneDesks[bestDesk][i].getName();
             desk.setName(name);
             i++;
         }
@@ -126,31 +137,45 @@ void Arranger::arrange()
         {
             presetDesks.push_back(DeskForCal(desk.getJustCoord(), desk.getName(), desk.isDisabled()));
         }
+        srand(getTime());
         std::mt19937 mersenne(rng());
         std::uniform_int_distribution<> random(0, presetDesks.size()-1);
 
         geneDesks.clear();
-        for (std::vector<DeskForCal> geneDesk : geneDesks)
+        bool first = true;
+        for (int i = 0; i < gens; i++)
         {
-            geneDesk = presetDesks;
-            std::string buf;
-            int from = random(mersenne);
-            int to;
-            while (to != from)
+            geneDesks.push_back(presetDesks);
+            if (!first)
             {
-                to = random(mersenne);
+                std::string buf;
+                int from = random(mersenne);
+                int to = random(mersenne);
+                while (to == from)
+                {
+                    from = random(mersenne);
+                    to = random(mersenne);
+                }
+
+                buf = geneDesks[i][from].getName();
+                geneDesks[i][from].setName(geneDesks[i][to].getName());
+                geneDesks[i][to].setName(buf);
             }
-            
-            buf = presetDesks[from].getName();
-            presetDesks[from].setName(presetDesks[to].getName());
-            presetDesks[to].setName(buf);
+            first = false;
         }
     }
     epoch++;
-    std::cout << epoch << std::endl;
 }
 
-int Arranger::evaluate(std::vector<DeskForCal> p_desks)
+int Arranger::evaluate(std::vector<DeskForCal> p_desks) // test evaluate code
 {
-    return 0;
+    int score = 0;
+    for (DeskForCal desk : p_desks)
+    {
+        score += std::stoi(desk.getName())
+        * desk.getCoord().x
+        * desk.getCoord().y;
+    }
+    
+    return score;
 }

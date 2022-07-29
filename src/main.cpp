@@ -10,14 +10,6 @@
 #include <vector>
 #include <algorithm>
 
-// #include <chrono>
-// #include <cstdint>
-
-// uint64_t getTime() {
-//   using namespace std::chrono;
-//   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-// }
-
 const int SCREEN_X = 1200;
 const int SCREEN_Y = 900;
 
@@ -36,7 +28,6 @@ bool init();
 void eventHandle();
 TTF_Font* getFont(int size, bool bold = false);
 void renderEssential();
-void setName(int deskId, std::string name);
 
 bool running = true;
 int state = STATE_START;
@@ -433,11 +424,6 @@ int main(int argv, char** args)
     SDL_Quit();
 
     return 0;
-}
-
-void setName(int deskId, std::string name)
-{
-    desks[deskId].setName(name);
 }
 
 void renderEssential()
