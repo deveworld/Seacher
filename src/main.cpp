@@ -19,7 +19,8 @@ const int STATE_PREPARE_NO_DESK         = 003;
 const int STATE_PREPARE_NAME            = 005;
 const int STATE_PREPARE_NAME_CHECK      = 006;
 const int STATE_PREPARE_SEPARATE_NAME   = 007;
-const int STATE_ARRANGE                 = 010;
+const int STATE_PREPARE_FRONT_NAME      = 010;
+const int STATE_ARRANGE                 = 011;
 
 #include "RenderWindow.hpp"
 #include "Desk.hpp"
@@ -39,8 +40,10 @@ int row, column;
 std::string rawNames = "";
 std::string namesCheck = "";
 std::string rawSeparateNames = "";
+std::string rawFrontNames = "";
 std::vector<std::string> names;
 std::vector<std::string> separateNames;
+std::vector<std::string> frontNames;
 
 bool leftMouseDown = false;
 bool rightMouseDown = false;
@@ -421,8 +424,58 @@ int main(int argv, char** args)
 
                         separateNames.push_back(token);
                         buffer.erase(0, pos + delimiter.length());
-                    } while (pos != std::string::npos);                    
-                    Arranger buf = Arranger(&desks, &names, &separateNames);
+                    } while (pos != std::string::npos);
+
+                    state = STATE_PREPARE_FRONT_NAME;
+                }
+                ImGui::End();
+            }
+            break;
+        }
+
+        case STATE_PREPARE_FRONT_NAME:
+        {
+            renderEssential();
+
+            {
+                ImGui::SetNextWindowSize(ImVec2(316, 400), ImGuiCond_Once);
+                ImGui::SetNextWindowPos(ImVec2(SCREEN_X/2, SCREEN_Y/2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+                ImGui::Begin("Students Settings-5");
+                ImGui::Text("Enter student front names");
+                ImGui::InputTextMultiline(
+                    "##FrontNames", 
+                    &rawFrontNames,
+                    ImVec2(300, 300), 
+                    ImGuiInputTextFlags_CharsNoBlank
+                );
+                if (ImGui::Button("Done", ImVec2(50, 30)))
+                {
+                    std::string buffer = rawFrontNames;
+                    size_t pos = 0;
+                    std::string token;
+                    std::string delimiter = "\n";
+                    do
+                    {
+                        pos = buffer.find(delimiter);
+
+                        if (pos == std::string::npos)
+                        {
+                            token = buffer;
+                        }
+                        else
+                        {
+                            token = buffer.substr(0, pos);
+                        }
+
+                        if (token[token.size() -1] == '\r')
+                        {
+                            token = token.substr(0, token.size() -1);
+                        }
+
+                        frontNames.push_back(token);
+                        buffer.erase(0, pos + delimiter.length());
+                    } while (pos != std::string::npos);
+                    Arranger buf = Arranger(&desks, &names, &separateNames, &frontNames);
                     arranger = &buf;
 
                     state = STATE_ARRANGE;

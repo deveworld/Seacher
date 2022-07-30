@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <random>
 #include "Math.hpp"
+#include "Desk.hpp"
 #include <unistd.h>
 
 const int ARRANGE_STATE_INIT            = 1000;
@@ -28,11 +29,17 @@ private:
     std::vector<std::vector<DeskForCal>> geneDesks;
     std::vector<std::string>* names;
     std::vector<std::string>* separateNames;
+    std::vector<std::string>* frontNames;
     std::thread arrangerThread;
     std::default_random_engine rng = std::default_random_engine {};
     int bestDesk = 0;
 public:
-    Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names, std::vector<std::string>* p_separateNames);
+    Arranger(
+        std::vector<Desk>* p_desks, 
+        std::vector<std::string>* p_names, 
+        std::vector<std::string>* p_separateNames,
+        std::vector<std::string>* p_frontNames
+        );
     void geneDesksInit();
     void start();
     void stop();
@@ -41,10 +48,16 @@ public:
     int evaluate(std::vector<DeskForCal> p_desks);
 };
 
-Arranger::Arranger(std::vector<Desk>* p_desks, std::vector<std::string>* p_names, std::vector<std::string>* p_separateNames)
+Arranger::Arranger(
+        std::vector<Desk>* p_desks, 
+        std::vector<std::string>* p_names, 
+        std::vector<std::string>* p_separateNames,
+        std::vector<std::string>* p_frontNames
+        )
 : desks(p_desks)
 , names(p_names)
 , separateNames(p_separateNames)
+, frontNames(p_frontNames)
 {}
 
 void Arranger::geneDesksInit()
@@ -190,9 +203,12 @@ int Arranger::evaluate(std::vector<DeskForCal> p_desks)
                     }
                 }
             }
-            
         }
-        
+
+        if (std::find(frontNames->begin(), frontNames->end(), desk.getName()) != frontNames->end())
+        {
+            score += desk.getCoord().y;
+        }
     }
     
     return score;
