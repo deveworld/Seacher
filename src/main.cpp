@@ -507,6 +507,7 @@ int main(int argv, char** args)
                 if (ImGui::Button("Stop & Save", ImVec2(120, 30)))
                 {
                     arranger->stop();
+                    window.screenShot("output");
                 }
                 ImGui::End();
             }

@@ -26,6 +26,7 @@ public:
     void renderTextCenter(float p_x, float p_y, const char* p_text, TTF_Font* p_font, SDL_Color p_textColor, bool closeFont = false);
     void display();
     void cleanUp();
+    void screenShot(std::string p_save_name);
     ImGuiIO* getIO();
 };
 
@@ -133,6 +134,14 @@ void RenderWindow::display()
 void RenderWindow::cleanUp()
 {
     SDL_DestroyWindow(window);
+}
+
+void RenderWindow::screenShot(std::string p_save_name)
+{
+    SDL_Surface *sshot = SDL_CreateRGBSurface(0, SCREEN_X, SCREEN_Y, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+    SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, sshot->pixels, sshot->pitch);
+    SDL_SaveBMP(sshot, (p_save_name+".bmp").c_str());
+    SDL_FreeSurface(sshot);
 }
 
 ImGuiIO* RenderWindow::getIO()
